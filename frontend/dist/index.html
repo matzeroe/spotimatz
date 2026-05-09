@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <title>SpotiMatz Premium</title>
+    <link rel="stylesheet" href="/assets/styles.css?v=20260509-scroll-normal1" />
+  </head>
+  <body>
+    <main>
+      <section class="authScreen" id="authScreen">
+        <form class="authCard" id="authForm">
+          <p class="eyebrow">SpotiMatz Premium</p>
+          <h1 id="authTitle">Login</h1>
+          <p id="authHint">Melde dich an, um weiterzuhören.</p>
+          <p class="inviteNote hidden" id="inviteNote"></p>
+          <input id="authUsername" autocomplete="username" placeholder="Benutzername" />
+          <input id="authPassword" autocomplete="current-password" type="password" placeholder="Passwort" />
+          <button id="authSubmit">Einloggen</button>
+          <div class="generatedAccount hidden" id="generatedAccount">
+            <p>Accountdaten wurden generiert. Bitte bewahre sie sicher auf, das Passwort wird nur jetzt angezeigt.</p>
+            <label>Account ID <strong id="generatedAccountId"></strong></label>
+            <label>Passwort <strong id="generatedPassword"></strong></label>
+            <button type="button" id="confirmGeneratedAccount">Zum Login</button>
+          </div>
+          <p class="notice hidden" id="authNotice"></p>
+        </form>
+      </section>
+      <section class="topbar appOnly hidden" hidden>
+        <div>
+          <p class="eyebrow">SpotiMatz Premium</p>
+          <h1>Premium streaming.</h1>
+        </div>
+        <div class="topActions">
+          <span class="userBadge hidden" id="userBadge"></span>
+          <button class="textButton hidden" id="inviteButton">Admin</button>
+          <button class="textButton" id="logoutButton">Logout</button>
+          <button class="textButton" id="homeButton">Home</button>
+          <button class="iconButton" id="refresh" title="Refresh">R</button>
+        </div>
+      </section>
+      <section class="shell appOnly hidden" hidden>
+        <div class="workspace">
+          <form class="searchBar" id="searchForm">
+            <span>Search</span>
+            <input id="query" placeholder="Search tracks, albums, playlists" />
+            <button id="searchButton">Search</button>
+          </form>
+          <p class="notice hidden" id="notice"></p>
+          <div class="resultGrid" id="results"></div>
+        </div>
+      </section>
+      <footer class="player appOnly hidden" id="player" hidden>
+        <button class="playerHandle" id="playerHandle" title="Show artwork">⌃</button>
+        <div class="artworkPanel">
+          <div id="artworkImage" class="artworkImage"><div class="artworkFallback">♪</div></div>
+          <div>
+            <strong id="artworkTitle">Nothing playing</strong>
+            <small id="artworkArtist">Search a track to begin</small>
+            <span id="artworkAlbum" class="hidden"></span>
+          </div>
+        </div>
+        <div class="now">
+          <div class="miniCover" id="miniCover">♪</div>
+          <span class="nowMeta">
+            <strong id="nowTitle">Nothing playing</strong>
+            <span class="nowSubline">
+              <small id="nowArtist">Search a track to begin</small>
+            </span>
+          </span>
+        </div>
+        <button class="playButton" id="play" title="Play">▶</button>
+        <button class="iconButton favoriteButton" id="favoriteButton" title="Zu Favoriten hinzufügen">♡</button>
+        <div class="timeline">
+          <span id="currentTime">0:00</span>
+          <input id="seek" type="range" min="0" max="0" value="0" />
+          <span id="duration">0:00</span>
+          <span class="volumeIcon">Vol</span>
+          <input id="volume" type="range" min="0" max="1" step="0.01" value="1" />
+          <span id="volumeValue">100%</span>
+        </div>
+        <div class="playerQuality hidden" id="qualityBadge" title="">
+          <span>HQ</span>
+          <strong id="qualityLabel"></strong>
+        </div>
+        <audio id="audio"></audio>
+      </footer>
+    </main>
+    <script type="module" src="/assets/app.js?v=20260509-media-session2"></script>
+  </body>
+</html>

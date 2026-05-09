@@ -1,0 +1,6 @@
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+requests>=2.32.3
+SpotiFLAC>=0.2.8
+pytest>=9.0.0
+httpx>=0.28.0

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SpotiMatz Premium Debug</title>
+    <link rel="stylesheet" href="/assets/debug.css?v=20260507-debug1" />
+  </head>
+  <body>
+    <main>
+      <header class="debugHeader">
+        <div>
+          <p>SpotiMatz Premium</p>
+          <h1>Admin Debugging</h1>
+        </div>
+        <a href="/">Zur App</a>
+      </header>
+
+      <section class="statusGrid">
+        <article>
+          <span>Poll</span>
+          <strong id="pollStatus">waiting</strong>
+        </article>
+        <article>
+          <span>Jobs</span>
+          <strong id="jobCount">0</strong>
+        </article>
+        <article>
+          <span>Active</span>
+          <strong id="activeCount">0</strong>
+        </article>
+        <article>
+          <span>Last update</span>
+          <strong id="lastUpdate">never</strong>
+        </article>
+      </section>
+
+      <section class="debugLayout">
+        <div>
+          <h2>Jobs</h2>
+          <div id="jobs"></div>
+        </div>
+        <div>
+          <h2>Live Log</h2>
+          <pre id="eventLog"></pre>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="/assets/debug.js?v=20260507-debug1"></script>
+  </body>
+</html>
