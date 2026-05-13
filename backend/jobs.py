@@ -15,7 +15,7 @@ from time import time
 import requests
 
 from .config import DEFAULT_SERVICES, MUSIC_DIR, ROOT_DIR
-from .live_stream import resolve_stream_source
+from .live_stream import resolve_stream_source, stream_request_headers
 from .library import ensure_music_dir, find_newest_audio
 from .models import DownloadJob
 
@@ -132,7 +132,7 @@ class JobManager:
 
         response = requests.get(
             source.url,
-            headers=source.headers or None,
+            headers=stream_request_headers(source) or None,
             stream=True,
             timeout=(20, 180),
         )
@@ -157,11 +157,13 @@ class JobManager:
                     self._stream_sources[job.id] = source
                 job.stream_provider = source.provider
                 job.stream_quality = source.quality_label
+                job.stream_bitrate = source.bitrate_label
                 job.set_progress(max(job.progress, 6), f"Resolved {source.provider}")
             except Exception as exc:
                 with self._stream_source_lock:
                     self._stream_source_errors[job.id] = exc
                 job.error = str(exc)
+                job.status = "failed"
                 job.set_progress(job.progress or 100, "Stream source failed")
             finally:
                 event.set()

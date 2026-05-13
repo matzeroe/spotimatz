@@ -38,6 +38,6 @@ DEFAULT_SERVICES = [
 ]
 LIVE_STREAM_SERVICES = [
     service.strip()
-    for service in os.getenv("SPOTIFLAC_LIVE_STREAM_SERVICES", "spoti,qobuz,tidal").split(",")
+    for service in os.getenv("SPOTIFLAC_LIVE_STREAM_SERVICES", "youtube,spoti,deezer,tidal,qobuz").split(",")
     if service.strip()
 ]

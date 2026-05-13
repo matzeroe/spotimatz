@@ -1,40 +1,29 @@
 from __future__ import annotations
 
 import subprocess
-from dataclasses import dataclass, field
 from typing import Any
 
-from SpotiFLAC.downloader import DownloadOptions, _build_provider
-from SpotiFLAC.providers.spotify_metadata import SpotifyMetadataClient
+import requests
 
 from .config import LIVE_STREAM_SERVICES, MUSIC_DIR
 from .models import DownloadJob
+from .spotiflac_adapter import (
+    StreamSource,
+    build_provider as _build_provider,
+    create_download_options,
+    ensure_isrc as _ensure_isrc,
+    resolve_single_track_metadata as _resolve_metadata,
+    stream_source_for_provider as _source_for_provider,
+)
 
 PREVIEW_DURATION_SECONDS = 35
 SHORT_TRACK_GRACE_SECONDS = 45
 
 
-@dataclass(frozen=True)
-class StreamSource:
-    provider: str
-    url: str
-    headers: dict[str, str] = field(default_factory=dict)
-    media_type: str = "audio/flac"
-    extension: str = ".flac"
-    quality_label: str = "FLAC"
-
-
 def resolve_stream_source(job: DownloadJob) -> StreamSource:
     metadata = _resolve_metadata(job.spotify_url)
     metadata = _ensure_isrc(metadata)
-    opts = DownloadOptions(
-        output_dir=str(MUSIC_DIR),
-        services=LIVE_STREAM_SERVICES,
-        filename_format="{title} - {artist}",
-        use_track_numbers=False,
-        use_artist_subfolders=False,
-        use_album_subfolders=False,
-    )
+    opts = create_download_options(MUSIC_DIR, LIVE_STREAM_SERVICES)
 
     errors: list[str] = []
     for service in LIVE_STREAM_SERVICES:
@@ -44,11 +33,12 @@ def resolve_stream_source(job: DownloadJob) -> StreamSource:
         try:
             source = _source_for_provider(provider, metadata)
             if source:
+                _assert_stream_source_openable(source)
                 _reject_preview_source(source, metadata)
                 job.add_log(f"Resolved stream source via {provider.name}: {source.quality_label}")
                 return source
             errors.append(f"{provider.name}: no streamable direct URL")
-        except PreviewSourceError as exc:
+        except (PreviewSourceError, StreamSourceUnavailable) as exc:
             job.add_log(f"Skipping {provider.name}: {exc}")
             errors.append(f"{provider.name}: {exc}")
         except Exception as exc:
@@ -58,72 +48,50 @@ def resolve_stream_source(job: DownloadJob) -> StreamSource:
     raise RuntimeError(f"No direct stream source available: {detail}")
 
 
-def _resolve_metadata(spotify_url: str) -> Any:
-    collection_name, tracks = SpotifyMetadataClient().get_url(spotify_url)
-    if not tracks:
-        raise RuntimeError(f"No tracks found in {collection_name or spotify_url}")
-    if len(tracks) > 1:
-        raise RuntimeError("Live streaming supports single tracks only")
-    return tracks[0]
-
-
-def _ensure_isrc(metadata: Any) -> Any:
-    if getattr(metadata, "isrc", ""):
-        return metadata
-    try:
-        from SpotiFLAC.core.http import HttpClient
-        from SpotiFLAC.core.isrc_helper import IsrcHelper
-
-        resolved = IsrcHelper(HttpClient("isrc")).get_isrc(metadata.id)
-        if resolved:
-            return metadata.model_copy(update={"isrc": resolved})
-    except Exception:
-        pass
-    return metadata
-
-
-def _source_for_provider(provider: Any, metadata: Any) -> StreamSource | None:
-    name = provider.name
-    if name == "tidal":
-        tidal_url = provider.resolve_spotify_to_tidal(metadata.id, metadata.title, metadata.artists)
-        track_id = provider._parse_track_id(tidal_url)
-        url_or_manifest = provider._get_download_url_with_fallback(track_id, "LOSSLESS")
-        if url_or_manifest.startswith("MANIFEST:"):
-            from SpotiFLAC.providers.tidal import parse_manifest
-
-            result = parse_manifest(url_or_manifest.removeprefix("MANIFEST:"))
-            if result.direct_url and "flac" in result.mime_type.lower():
-                return StreamSource(provider=name, url=result.direct_url, quality_label="Lossless FLAC")
-            return None
-        return StreamSource(provider=name, url=url_or_manifest, quality_label="Lossless FLAC")
-
-    if name == "qobuz":
-        if not metadata.isrc:
-            return None
-        track = provider._search_by_isrc(metadata.isrc)
-        track_id = track.get("id")
-        if not track_id:
-            return None
-        return StreamSource(provider=name, url=provider._get_stream_url(track_id, "27", True), quality_label="Hi-Res FLAC")
-
-    if name == "spotidownloader":
-        token = provider._get_token()
-        return StreamSource(
-            provider=name,
-            url=provider._get_flac_url(metadata.id, token),
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Origin": "https://spotidownloader.com",
-                "Referer": "https://spotidownloader.com/",
-            },
-            quality_label="FLAC",
-        )
-
-    return None
-
-
 class PreviewSourceError(RuntimeError):
     pass
+
+
+class StreamSourceUnavailable(RuntimeError):
+    pass
+
+
+def _assert_stream_source_openable(source: StreamSource) -> None:
+    headers = stream_request_headers(source, probe=True)
+    try:
+        with requests.get(
+            source.url,
+            headers=headers or None,
+            stream=True,
+            timeout=(8, 15),
+            allow_redirects=True,
+        ) as response:
+            if response.status_code not in (200, 206):
+                raise StreamSourceUnavailable(f"stream URL returned HTTP {response.status_code}")
+
+            content_type = response.headers.get("Content-Type", "").lower()
+            if "text/html" in content_type or "application/json" in content_type:
+                raise StreamSourceUnavailable(f"stream URL returned {content_type or 'non-audio content'}")
+
+            try:
+                first_chunk = next(response.iter_content(chunk_size=2), b"")
+            except StopIteration:
+                first_chunk = b""
+            if not first_chunk:
+                raise StreamSourceUnavailable("stream URL did not return audio bytes")
+    except StreamSourceUnavailable:
+        raise
+    except requests.RequestException as exc:
+        raise StreamSourceUnavailable(str(exc)) from exc
+
+
+def stream_request_headers(source: StreamSource, probe: bool = False) -> dict[str, str]:
+    headers = dict(source.headers or {})
+    headers.setdefault("User-Agent", "Mozilla/5.0")
+    headers.setdefault("Accept", "*/*")
+    if probe:
+        headers.setdefault("Range", "bytes=0-1")
+    return headers
 
 
 def _reject_preview_source(source: StreamSource, metadata: Any) -> None:

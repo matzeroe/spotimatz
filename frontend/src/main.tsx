@@ -77,6 +77,7 @@ type Job = {
   stream_url: string | null;
   stream_provider: string;
   stream_quality: string;
+  stream_bitrate: string;
   bytes_available: number;
   total_bytes: number;
 };
@@ -918,7 +919,7 @@ function AdminPanel({
                       {job.artist || "Unknown artist"} · {job.album || "Unknown album"}<br />
                       user={job.owner_username || "unknown"}{job.owner_user_id ? ` · ${job.owner_user_id}` : ""}<br />
                       stream={job.stream_status} · phase={job.phase || "-"}<br />
-                      provider={job.stream_provider || "-"} · quality={job.stream_quality || "-"}<br />
+                      provider={job.stream_provider || "-"} · quality={job.stream_quality || "-"} · bitrate={job.stream_bitrate || "-"}<br />
                       bytes={Number(job.bytes_available || 0).toLocaleString()} / {Number(job.total_bytes || 0).toLocaleString()} · id={job.id}
                     </small>
                     <div className="jobProgress"><span style={{ width: `${progress}%` }} /></div>
@@ -1317,6 +1318,7 @@ function Player({
   const title = streamJob ? streamJob.title || "Buffering stream" : "Nothing playing";
   const artist = streamJob ? streamJob.artist || streamJob.phase : "Search a track to begin";
   const quality = streamJob?.stream_quality || "";
+  const bitrate = streamJob?.stream_bitrate || "";
   const currentTrack = streamJob ? {
     id: streamJob.spotify_url || streamJob.id,
     title: streamJob.title || "Unknown title",
@@ -1370,7 +1372,7 @@ function Player({
       observer?.disconnect();
       window.removeEventListener("resize", updatePlayerHeight);
     };
-  }, [expanded, streamJob?.id, quality, sourceUrl]);
+  }, [expanded, streamJob?.id, quality, bitrate, sourceUrl]);
 
   useEffect(() => {
     setPlaying(false);
@@ -1601,9 +1603,10 @@ function Player({
         <span>{Math.round(volume * 100)}%</span>
       </div>
       {quality ? (
-        <div className="playerQuality" title={`${quality}${streamJob?.stream_provider ? ` via ${streamJob.stream_provider}` : ""}`}>
+        <div className="playerQuality" title={`${quality}${bitrate ? ` · ${bitrate}` : ""}${streamJob?.stream_provider ? ` via ${streamJob.stream_provider}` : ""}`}>
           <span>HQ</span>
           <strong>{quality}</strong>
+          {bitrate ? <em>{bitrate}</em> : null}
         </div>
       ) : null}
       <audio
@@ -1657,6 +1660,63 @@ function App() {
     }
     document.addEventListener("contextmenu", blockContextMenu);
     return () => document.removeEventListener("contextmenu", blockContextMenu);
+  }, []);
+
+  useEffect(() => {
+    let lastTouchY = 0;
+
+    function isScrollControl(target: EventTarget | null): boolean {
+      return target instanceof Element && Boolean(target.closest("input, textarea, select, .queueGrip"));
+    }
+
+    function canScrollElement(element: Element, deltaY: number): boolean {
+      const style = window.getComputedStyle(element);
+      if (style.overflowY !== "auto" && style.overflowY !== "scroll") return false;
+      if (element.scrollHeight <= element.clientHeight + 1) return false;
+      if (deltaY < 0) return element.scrollTop > 0;
+      if (deltaY > 0) return element.scrollTop + element.clientHeight < element.scrollHeight - 1;
+      return true;
+    }
+
+    function hasScrollableParent(target: EventTarget | null, deltaY: number): boolean {
+      let node = target instanceof Element ? target : null;
+      while (node && node !== document.body && node !== document.documentElement) {
+        if (canScrollElement(node, deltaY)) return true;
+        node = node.parentElement;
+      }
+      return false;
+    }
+
+    function routeWheel(event: WheelEvent) {
+      if (event.defaultPrevented || isScrollControl(event.target)) return;
+      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+      if (hasScrollableParent(event.target, event.deltaY)) return;
+      window.scrollBy({ top: event.deltaY, left: 0, behavior: "auto" });
+      event.preventDefault();
+    }
+
+    function rememberTouch(event: TouchEvent) {
+      lastTouchY = event.touches[0]?.clientY || 0;
+    }
+
+    function routeTouch(event: TouchEvent) {
+      if (event.defaultPrevented || event.touches.length !== 1 || isScrollControl(event.target)) return;
+      const nextY = event.touches[0]?.clientY || lastTouchY;
+      const deltaY = lastTouchY - nextY;
+      lastTouchY = nextY;
+      if (!deltaY || hasScrollableParent(event.target, deltaY)) return;
+      window.scrollBy({ top: deltaY, left: 0, behavior: "auto" });
+      event.preventDefault();
+    }
+
+    document.addEventListener("wheel", routeWheel, { capture: true, passive: false });
+    document.addEventListener("touchstart", rememberTouch, { capture: true, passive: true });
+    document.addEventListener("touchmove", routeTouch, { capture: true, passive: false });
+    return () => {
+      document.removeEventListener("wheel", routeWheel, { capture: true });
+      document.removeEventListener("touchstart", rememberTouch, { capture: true });
+      document.removeEventListener("touchmove", routeTouch, { capture: true });
+    };
   }, []);
 
   useEffect(() => {

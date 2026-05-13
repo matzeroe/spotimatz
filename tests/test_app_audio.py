@@ -81,6 +81,18 @@ def test_canceled_job_stream_is_unavailable(tmp_path: Path) -> None:
     assert data["stream_url"] is None
 
 
+def test_failed_live_job_stream_is_unavailable(tmp_path: Path) -> None:
+    audio = tmp_path / "stream.flac"
+    job = DownloadJob(id="job", spotify_url="https://open.spotify.com/track/test", stream_path=audio, live_stream=True)
+    job.status = "failed"
+    job.error = "No direct stream source available"
+
+    data = job.to_dict()
+
+    assert data["stream_status"] == "unavailable"
+    assert data["stream_url"] is None
+
+
 def test_non_live_stream_endpoint_is_disabled(tmp_path: Path, monkeypatch) -> None:
     outside = tmp_path / "outside.flac"
     outside.write_bytes(b"audio")

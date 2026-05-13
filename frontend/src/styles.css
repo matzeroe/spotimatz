@@ -35,6 +35,14 @@ body {
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  width: 100%;
+}
+
+#root {
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: visible;
   width: 100%;
 }
 
@@ -60,6 +68,8 @@ main {
   min-height: 100dvh;
   overflow: visible;
   padding: 28px 32px calc(var(--player-collapsed-height) + 28px + env(safe-area-inset-bottom, 0px));
+  touch-action: pan-y;
+  width: 100%;
 }
 
 .topbar {
@@ -1357,6 +1367,13 @@ h1 {
   line-height: 1;
 }
 
+.playerQuality em {
+  color: #7ee9a4;
+  font-size: 0.72rem;
+  font-style: normal;
+  line-height: 1;
+}
+
 .nowSubline {
   align-items: center;
   display: flex;
@@ -1808,6 +1825,10 @@ input[type="range"]::-webkit-slider-thumb {
 
   .playerQuality strong {
     font-size: 0.68rem;
+  }
+
+  .playerQuality em {
+    font-size: 0.66rem;
   }
 
   .nowSubline {

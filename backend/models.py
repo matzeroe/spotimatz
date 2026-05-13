@@ -32,6 +32,7 @@ class DownloadJob:
     live_stream: bool = False
     stream_provider: str = ""
     stream_quality: str = ""
+    stream_bitrate: str = ""
     total_bytes: int = 0
     created_at: float = field(default_factory=time)
     updated_at: float = field(default_factory=time)
@@ -107,6 +108,7 @@ class DownloadJob:
                 else None,
                 "stream_provider": self.stream_provider,
                 "stream_quality": self.stream_quality,
+                "stream_bitrate": self.stream_bitrate,
                 "bytes_available": self.bytes_available,
                 "total_bytes": self.total_bytes,
                 "created_at": self.created_at,

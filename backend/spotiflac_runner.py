@@ -14,18 +14,15 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    from SpotiFLAC import SpotiFLAC
+    from pathlib import Path
 
-    SpotiFLAC(
+    from .spotiflac_adapter import run_download
+
+    run_download(
         args.url,
-        args.output_dir,
-        services=[service for service in args.services.split(",") if service],
-        filename_format="{title} - {artist}",
-        use_track_numbers=False,
-        use_artist_subfolders=False,
-        use_album_subfolders=False,
-        loop=None,
-        output_path=args.output_path,
+        Path(args.output_dir),
+        Path(args.output_path),
+        [service for service in args.services.split(",") if service],
     )
 
 

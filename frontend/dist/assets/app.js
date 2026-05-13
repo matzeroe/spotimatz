@@ -1358,6 +1358,53 @@ document.addEventListener("contextmenu", (event) => {
   event.preventDefault();
 });
 
+let lastTouchY = 0;
+
+function isScrollControl(target) {
+  return target instanceof Element && Boolean(target.closest("input, textarea, select, .queueGrip"));
+}
+
+function canScrollElement(element, deltaY) {
+  const style = window.getComputedStyle(element);
+  const overflowY = style.overflowY;
+  if (overflowY !== "auto" && overflowY !== "scroll") return false;
+  if (element.scrollHeight <= element.clientHeight + 1) return false;
+  if (deltaY < 0) return element.scrollTop > 0;
+  if (deltaY > 0) return element.scrollTop + element.clientHeight < element.scrollHeight - 1;
+  return true;
+}
+
+function hasScrollableParent(target, deltaY) {
+  let node = target instanceof Element ? target : null;
+  while (node && node !== document.body && node !== document.documentElement) {
+    if (canScrollElement(node, deltaY)) return true;
+    node = node.parentElement;
+  }
+  return false;
+}
+
+document.addEventListener("wheel", (event) => {
+  if (event.defaultPrevented || isScrollControl(event.target)) return;
+  if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+  if (hasScrollableParent(event.target, event.deltaY)) return;
+  window.scrollBy({ top: event.deltaY, left: 0, behavior: "auto" });
+  event.preventDefault();
+}, { capture: true, passive: false });
+
+document.addEventListener("touchstart", (event) => {
+  lastTouchY = event.touches[0]?.clientY || 0;
+}, { capture: true, passive: true });
+
+document.addEventListener("touchmove", (event) => {
+  if (event.defaultPrevented || event.touches.length !== 1 || isScrollControl(event.target)) return;
+  const nextY = event.touches[0]?.clientY || lastTouchY;
+  const deltaY = lastTouchY - nextY;
+  lastTouchY = nextY;
+  if (!deltaY || hasScrollableParent(event.target, deltaY)) return;
+  window.scrollBy({ top: deltaY, left: 0, behavior: "auto" });
+  event.preventDefault();
+}, { capture: true, passive: false });
+
 window.addEventListener("resize", updatePlayerHeightVar);
 
 loadAuth().catch(() => showAuth());

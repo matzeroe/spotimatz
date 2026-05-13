@@ -5,10 +5,10 @@ import os
 
 import requests
 
+from .spotiflac_adapter import spotify_access_token, spotify_api_get
 
 SPOTIFY_SEARCH_URL = "https://api.spotify.com/v1/search"
 SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
-_spotiflac_client = None
 
 
 class SearchUnavailable(RuntimeError):
@@ -16,31 +16,16 @@ class SearchUnavailable(RuntimeError):
 
 
 def _token_from_spotiflac() -> str | None:
-    try:
-        from SpotiFLAC.getMetadata import get_access_token
-    except Exception:
-        return None
-
-    token = get_access_token()
-    if isinstance(token, dict):
-        token = token.get("access_token")
-    return token if isinstance(token, str) and token else None
+    return spotify_access_token()
 
 
 def _search_with_spotiflac_client(query: str, limit: int) -> dict | None:
-    global _spotiflac_client
-    try:
-        from SpotiFLAC.providers.spotify_metadata import SpotifyMetadataClient
-    except Exception:
-        return None
-
-    if _spotiflac_client is None:
-        _spotiflac_client = SpotifyMetadataClient()
-
-    data = _spotiflac_client._get(
+    data = spotify_api_get(
         "/search",
         params={"q": query, "type": "track,album,playlist", "limit": max(1, min(limit, 25))},
     )
+    if data is None:
+        return None
     tracks = data.get("tracks", {}).get("items", [])
     albums = data.get("albums", {}).get("items", [])
     playlists = data.get("playlists", {}).get("items", [])
@@ -194,27 +179,11 @@ def _append_playlist_pages(data: dict, token: str) -> None:
 
 
 def _album_tracks_with_spotiflac_client(album_id: str) -> dict | None:
-    global _spotiflac_client
-    try:
-        from SpotiFLAC.providers.spotify_metadata import SpotifyMetadataClient
-    except Exception:
-        return None
-
-    if _spotiflac_client is None:
-        _spotiflac_client = SpotifyMetadataClient()
-    return _spotiflac_client._get(f"/albums/{album_id}")
+    return spotify_api_get(f"/albums/{album_id}")
 
 
 def _playlist_with_spotiflac_client(playlist_id: str) -> dict | None:
-    global _spotiflac_client
-    try:
-        from SpotiFLAC.providers.spotify_metadata import SpotifyMetadataClient
-    except Exception:
-        return None
-
-    if _spotiflac_client is None:
-        _spotiflac_client = SpotifyMetadataClient()
-    return _spotiflac_client._get(f"/playlists/{playlist_id}")
+    return spotify_api_get(f"/playlists/{playlist_id}")
 
 
 def _shape_track(track: dict) -> dict:
